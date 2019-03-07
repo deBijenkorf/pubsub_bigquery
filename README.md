@@ -48,3 +48,29 @@ below illustrates a simple setup:
     cd target/release
     ./pubsub_bigquery config.toml
     ```
+
+
+## Creating a Docker image
+
+It's possible to create a Docker container with a size of approximately 10MB by creating a static
+Rust binary. You will need the [rust-musl-builder](https://github.com/emk/rust-musl-builder) for it.
+More information about this can be found [here](https://blog.semicolonsoftware.de/building-minimal-docker-containers-for-rust-applications/)
+
+1. First create a release using the following command:
+
+    ```
+    alias rust-musl-builder='docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder'
+    rust-musl-builder cargo build --release
+    ```
+
+2. Then create a Docker image using the supplied `Dockerfile`:
+
+    ```
+    docker build -t pubsub-bigquery:0.1 .
+    ```
+    
+3. And lastly, run the Docker container:
+
+    ```
+    docker run pubsub-bigquery:0.1
+    ```
