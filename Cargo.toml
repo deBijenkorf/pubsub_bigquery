@@ -1,0 +1,21 @@
+[package]
+name = "pubsub_bigquery"
+version = "0.1.0"
+authors = ["zwennesm <zwennesm@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+config = "0.9"
+simple_logger = "1.0.1"
+base64 = "0.10.1"
+uuid = { version = "0.7", features = ["v4"] }
+
+hyper = "^0.10"
+hyper-rustls = "^0.6"
+google-pubsub1_beta2 = "1.0.8+20181001"
+google-bigquery2 = "1.0.8+20181001"
+yup-oauth2 = "^1.0"
+
+serde = "1.0.89"
+serde_derive = "1.0.89"
