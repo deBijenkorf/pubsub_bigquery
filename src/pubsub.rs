@@ -3,9 +3,9 @@ use google_pubsub1_beta2::PublishRequest;
 use google_pubsub1_beta2::PubsubMessage;
 use google_pubsub1_beta2::PullRequest;
 use google_pubsub1_beta2::ReceivedMessage;
-use hyper::net::HttpsConnector;
 use log::{error, info, trace, warn};
 
+use crate::auth::Authenticator;
 use crate::handler::Handler;
 
 type PubsubClient<'a> = google_pubsub1_beta2::Pubsub<
@@ -18,10 +18,12 @@ pub struct PubsubSource {
 }
 
 impl PubsubSource {
-    pub fn new(max_messages: i32) -> Self {
+    pub fn new(max_messages: i32, auth: Authenticator) -> Self {
+        let client = google_pubsub1_beta2::Pubsub::new(auth.client, auth.access);
+
         PubsubSource {
             max_messages,
-            client: authenticate(),
+            client,
         }
     }
 
@@ -112,15 +114,4 @@ impl PubsubSource {
         let decoded = base64::decode(&message.data.unwrap_or(String::new())).unwrap();
         String::from_utf8(decoded).unwrap()
     }
-}
-
-fn authenticate<'a>() -> PubsubClient<'a> {
-    let client_secret = oauth::service_account_key_from_file(&"auth.json".to_string()).unwrap();
-    let client = hyper::Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
-
-    info!("requesting new access token for Google PubSub");
-
-    let access = oauth::ServiceAccountAccess::new(client_secret, client);
-    let client = hyper::Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
-    google_pubsub1_beta2::Pubsub::new(client, access)
 }

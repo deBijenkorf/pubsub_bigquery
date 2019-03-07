@@ -1,10 +1,15 @@
 use std::fs::{File, OpenOptions, remove_file};
 use std::io::Write;
 
-use google_bigquery2::{Job, JobConfiguration, JobConfigurationLoad, TableReference};
-use hyper::net::HttpsConnector;
+use google_bigquery2::{
+    Job,
+    JobConfiguration,
+    JobConfigurationLoad,
+    TableReference,
+};
 use log::{error, info};
 
+use crate::auth::Authenticator;
 use crate::handler::Handler;
 use crate::handler::MessageCounter;
 
@@ -21,13 +26,15 @@ type BigQueryClient<'a> = google_bigquery2::Bigquery<
     oauth::ServiceAccountAccess<hyper::Client>>;
 
 impl BigQuerySink {
-    pub fn new(project_id: String, dataset_id: String, table_id: String, max_messages: u32) -> Self {
+    pub fn new(project_id: String, dataset_id: String, table_id: String, max_messages: u32, auth: Authenticator) -> Self {
+        let client = google_bigquery2::Bigquery::new(auth.client, auth.access);
+
         BigQuerySink {
             project_id,
             dataset_id,
             table_id,
             counter: MessageCounter::new(max_messages),
-            client: authenticate(),
+            client,
         }
     }
 
@@ -97,16 +104,4 @@ fn write_to_file(file_name: &str, messages: Vec<String>) {
     for msg in messages {
         writeln!(file, "{}", msg).expect("can't write to file.");
     }
-}
-
-fn authenticate<'a>() -> BigQueryClient<'a> {
-    let client_secret = oauth::service_account_key_from_file(&"auth.json".to_string()).unwrap();
-    let client = hyper::Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
-
-    let access = oauth::ServiceAccountAccess::new(client_secret, client);
-
-    info!("requesting new access token for Google BigQuery");
-
-    let client = hyper::Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
-    google_bigquery2::Bigquery::new(client, access)
 }

@@ -5,6 +5,7 @@ use serde_derive::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Google {
     pub project_id: String,
+    pub auth_key_file: String,
     pub pubsub_subscription: String,
     pub pubsub_topic: String,
     pub bigquery_dataset: String,
