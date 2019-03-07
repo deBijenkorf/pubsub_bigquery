@@ -1,5 +1,5 @@
-use rustplow;
+use pubsub_bigquery;
 
 fn main() {
-    rustplow::start();
+    pubsub_bigquery::start();
 }
