@@ -15,9 +15,9 @@ impl Authenticator {
         HttpsConnector::new(hyper_rustls::TlsClient::new())
     }
 
-    pub fn authenticate(path: &String) -> Authenticator {
+    pub fn authenticate(path: &str) -> Authenticator {
         info!("requesting new GCP access token");
-        let client_secret = oauth::service_account_key_from_file(&path).unwrap();
+        let client_secret = oauth::service_account_key_from_file(&path.to_string()).unwrap();
         let client = hyper::Client::with_connector(Authenticator::get_https_client());
         let access = oauth::ServiceAccountAccess::new(client_secret, client);
         let client = hyper::Client::with_connector(Authenticator::get_https_client());

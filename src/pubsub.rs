@@ -44,14 +44,14 @@ impl PubsubSource {
                 }
                 Ok((_response, response)) => {
                     let received_messages: Vec<ReceivedMessage> = response.received_messages
-                        .unwrap_or(Vec::new());
+                        .unwrap_or_default();
 
                     let messages: Vec<String> = received_messages.clone().into_iter()
-                        .map(|msg| PubsubSource::decode_message(msg.message.unwrap_or(Default::default())))
+                        .map(|msg| PubsubSource::decode_message(msg.message.unwrap_or_default()))
                         .collect();
 
                     let ack_ids: Vec<String> = received_messages.clone().into_iter()
-                        .map(|msg| msg.ack_id.unwrap_or(String::new()))
+                        .map(|msg| msg.ack_id.unwrap_or_default())
                         .collect();
 
                     handler.handle(messages);
@@ -62,7 +62,7 @@ impl PubsubSource {
     }
 
     pub fn publish(&self, messages: Vec<String>, topic: &str) {
-        if messages.len() == 0 {
+        if messages.is_empty() {
             warn!("message length is 0, publishing has been stopped");
             return;
         }
@@ -82,7 +82,7 @@ impl PubsubSource {
                 error!("Publish error: {}", e);
             }
             Ok((_response, response)) => {
-                for msg in response.message_ids.unwrap_or(Vec::new()) {
+                for msg in response.message_ids.unwrap_or_default() {
                     trace!("Published message #{}", msg);
                 }
             }
@@ -111,7 +111,7 @@ impl PubsubSource {
     }
 
     fn decode_message(message: PubsubMessage) -> String {
-        let decoded = base64::decode(&message.data.unwrap_or(String::new())).unwrap();
+        let decoded = base64::decode(&message.data.unwrap_or_default()).unwrap();
         String::from_utf8(decoded).unwrap()
     }
 }
