@@ -5,15 +5,15 @@
 Project status: ALPHA
 
 A Google BigQuery sink for Google Pubsub events written in Rust. This project originated after
-some frustrations writing another version of this flow using the Apache Beam SDK. Although
+some frustrations with writing another version of this flow using the Apache Beam SDK. Although
 the Apache Beam SDK is relatively straight forward, I noticed that it's either:
 
 * Expensive (when using the Google Dataflow runner)
 * Slow (when using the SparkRunner)
-* And in both cases quite memory intensive
+* In both cases quite memory intensive
 
 Because of these reasons it seemed like a good idea to implement this flow in Rust using the
-Google API's directly.
+Google API's directly. This application currently does not have any options for horizontal scaling
 
 ## Quickstart
 
@@ -31,9 +31,11 @@ below illustrates a simple setup:
     
     debug = false
     mode = "subscribe" // or `publish` for testing
+    delimiter = ";" // can be any ISO-8859-1 single-byte character 
     
     [google]
     project_id = "PROJECT_ID"
+    auth_key_file = "path/to/gcp_secret_auth.json"
     pubsub_subscription = "projects/PROJECT_ID/subscriptions/SUBSCRIPTION"
     pubsub_topic = "projects/PROJECT_ID/topics/TOPIC"
     bigquery_dataset = "DATASET_NAME"
@@ -48,7 +50,6 @@ below illustrates a simple setup:
     cd target/release
     ./pubsub_bigquery config.toml
     ```
-
 
 ## Creating a Docker image
 

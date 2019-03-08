@@ -2,8 +2,8 @@ use config::{Config, ConfigError};
 use config::File;
 use serde_derive::Deserialize;
 
-#[derive(Debug, Deserialize)]
-pub struct Google {
+#[derive(Debug, Deserialize, Clone)]
+pub struct GoogleSettings {
     pub project_id: String,
     pub auth_key_file: String,
     pub pubsub_subscription: String,
@@ -28,7 +28,8 @@ pub enum Mode {
 pub struct Settings {
     pub debug: bool,
     pub mode: Mode,
-    pub google: Google,
+    pub delimiter: String,
+    pub google: GoogleSettings,
     pub limits: Limits,
 }
 

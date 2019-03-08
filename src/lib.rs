@@ -16,6 +16,7 @@ use std::env;
 use log::{error, info};
 use log::Level;
 
+use crate::handler::MessageCounter;
 use crate::pubsub::PubsubSource;
 use crate::settings::Settings;
 use crate::auth::Authenticator;
@@ -64,6 +65,7 @@ fn start_publisher(settings: Settings, message_count: u32) {
 }
 
 fn start_subscriber(settings: Settings) {
+    let google = settings.google.clone();
     let key_file = settings.google.auth_key_file;
 
     let source = PubsubSource::new(
@@ -72,10 +74,9 @@ fn start_subscriber(settings: Settings) {
     );
 
     let sink = bigquery::BigQuerySink::new(
-        settings.google.project_id,
-        settings.google.bigquery_dataset,
-        settings.google.bigquery_table,
-        settings.limits.handler_max_messages,
+        google,
+        settings.delimiter,
+        MessageCounter::new(settings.limits.handler_max_messages),
         Authenticator::authenticate(&key_file)
     );
 

@@ -12,11 +12,11 @@ use log::{error, info};
 use crate::auth::Authenticator;
 use crate::handler::Handler;
 use crate::handler::MessageCounter;
+use crate::settings::GoogleSettings;
 
 pub struct BigQuerySink {
-    pub project_id: String,
-    pub dataset_id: String,
-    pub table_id: String,
+    pub google: GoogleSettings,
+    pub delimiter: String,
     counter: MessageCounter,
     client: BigQueryClient<'static>,
 }
@@ -26,23 +26,16 @@ type BigQueryClient<'a> = google_bigquery2::Bigquery<
     oauth::ServiceAccountAccess<hyper::Client>>;
 
 impl BigQuerySink {
-    pub fn new(project_id: String, dataset_id: String, table_id: String, max_messages: u32, auth: Authenticator) -> Self {
+    pub fn new(google: GoogleSettings, delimiter: String, counter: MessageCounter, auth: Authenticator) -> Self {
         let client = google_bigquery2::Bigquery::new(auth.client, auth.access);
-
-        BigQuerySink {
-            project_id,
-            dataset_id,
-            table_id,
-            counter: MessageCounter::new(max_messages),
-            client,
-        }
+        BigQuerySink { google, delimiter, counter, client }
     }
 
     fn table_reference(&self) -> TableReference {
         TableReference {
-            project_id: Some((&self.project_id).to_string()),
-            dataset_id: Some((&self.dataset_id).to_string()),
-            table_id: Some((&self.table_id).to_string()),
+            project_id: Some(self.google.project_id.clone()),
+            table_id: Some(self.google.bigquery_table.clone()),
+            dataset_id: Some(self.google.bigquery_dataset.clone()),
         }
     }
 
@@ -54,7 +47,7 @@ impl BigQuerySink {
         load_config.autodetect = Some(true);
         load_config.quote = Some(String::from(""));
         load_config.destination_table = Some(table);
-
+        load_config.field_delimiter =Some(self.delimiter.clone());
         let mut job = Job::default();
 
         let mut job_config = JobConfiguration::default();
@@ -65,7 +58,7 @@ impl BigQuerySink {
     }
 
     pub fn upload_csv(&self, path: &str) {
-        let res = &self.client.jobs().insert(BigQuerySink::generate_job(&self), &self.project_id)
+        let res = &self.client.jobs().insert(BigQuerySink::generate_job(&self), &self.google.project_id)
             .upload(File::open(path).unwrap(), "text/csv".parse().unwrap());
 
         match res {
