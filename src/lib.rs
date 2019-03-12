@@ -3,7 +3,7 @@ extern crate config;
 extern crate google_bigquery2;
 extern crate google_pubsub1_beta2;
 extern crate hyper;
-extern crate hyper_rustls;
+extern crate hyper_tls;
 extern crate log;
 extern crate serde;
 extern crate serde_derive;
@@ -75,7 +75,7 @@ fn start_subscriber(settings: Settings) {
 
     let sink = bigquery::BigQuerySink::new(
         google,
-        settings.delimiter,
+        &settings.delimiter,
         MessageCounter::new(settings.limits.handler_max_messages),
         Authenticator::authenticate(&key_file)
     );
