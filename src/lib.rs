@@ -34,7 +34,7 @@ pub fn start() {
 
     let secret = match secret {
         Ok(s) => s,
-        Err(_) => panic!("GOOGLE_APPLICATION_CREDENTIALS must be set."),
+        _ => panic!("GOOGLE_APPLICATION_CREDENTIALS must be set."),
     };
 
     match settings {
