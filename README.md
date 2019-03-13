@@ -21,31 +21,40 @@ The application requires a few settings to be configured through a config file. 
 below illustrates a simple setup:
 
 1. Build the application using Cargo
+   
     ```
     cargo build --release
     ```
 
 2. Create a configuration file:
+   
     ```
     #config.toml
     
     debug = false
-    mode = "subscribe" // or `publish` for testing
-    delimiter = ";" // can be any ISO-8859-1 single-byte character 
+    mode = "subscribe"
     
-    [google]
+    [pubsub]
     project_id = "PROJECT_ID"
-    auth_key_file = "path/to/gcp_secret_auth.json"
-    pubsub_subscription = "projects/PROJECT_ID/subscriptions/SUBSCRIPTION"
-    pubsub_topic = "projects/PROJECT_ID/topics/TOPIC"
-    bigquery_dataset = "DATASET_NAME"
-    bigquery_table = "TABLE_NAME"
+    topic = "projects/PROJECT_ID/topics/TOPIC"
+    subscription = "projects/PROJECT_ID/subscriptions/SUBSCRIPTION"
+
+    [bigquery]
+    project_id = "PROJECT_ID"
+    dataset = "DATASET_NAME"
+    table = "TABLE_NAME"
+    delimiter = "\t" // can be any ISO-8859-1 single-byte character
+    quote = ""
+    auto_detect = true // auto detect schema in pubsub topic
+    allow_jagged_rows = true // allow null values in last columns
     
     [limits]
-    pubsub_max_messages = 200
-    handler_max_messages = 1000
+    pubsub_max_messages = 500
+    bigquery_max_messages = 1000
     ```
+    
 3. Run the application
+    
     ```
     cd target/release
     ./pubsub_bigquery config.toml

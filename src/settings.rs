@@ -1,21 +1,28 @@
-use config::{Config, ConfigError};
-use config::File;
+use config::{Config, ConfigError, File};
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct GoogleSettings {
+pub struct PubsubSettings {
     pub project_id: String,
-    pub auth_key_file: String,
-    pub pubsub_subscription: String,
-    pub pubsub_topic: String,
-    pub bigquery_dataset: String,
-    pub bigquery_table: String,
+    pub subscription: String,
+    pub topic: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BigQuerySettings {
+    pub project_id: String,
+    pub dataset: String,
+    pub table: String,
+    pub delimiter: String,
+    pub quote: String,
+    pub auto_detect: bool,
+    pub allow_jagged_rows: bool,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Limits {
     pub pubsub_max_messages: i32,
-    pub handler_max_messages: u32,
+    pub bigquery_max_messages: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,8 +35,8 @@ pub enum Mode {
 pub struct Settings {
     pub debug: bool,
     pub mode: Mode,
-    pub delimiter: String,
-    pub google: GoogleSettings,
+    pub pubsub: PubsubSettings,
+    pub bigquery: BigQuerySettings,
     pub limits: Limits,
 }
 

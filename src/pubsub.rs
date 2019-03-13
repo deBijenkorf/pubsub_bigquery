@@ -1,8 +1,10 @@
-use google_pubsub1_beta2::AcknowledgeRequest;
-use google_pubsub1_beta2::PublishRequest;
-use google_pubsub1_beta2::PubsubMessage;
-use google_pubsub1_beta2::PullRequest;
-use google_pubsub1_beta2::ReceivedMessage;
+use google_pubsub1_beta2::{
+    AcknowledgeRequest,
+    PublishRequest,
+    PubsubMessage,
+    PullRequest,
+    ReceivedMessage,
+};
 use log::{error, info, trace, warn};
 
 use crate::auth::Authenticator;
@@ -15,6 +17,7 @@ type PubsubClient<'a> = google_pubsub1_beta2::Pubsub<
 pub struct PubsubSource {
     max_messages: i32,
     client: PubsubClient<'static>,
+    buffered_ack_ids: Vec<String>,
 }
 
 impl PubsubSource {
@@ -24,10 +27,11 @@ impl PubsubSource {
         PubsubSource {
             max_messages,
             client,
+            buffered_ack_ids: vec![],
         }
     }
 
-    pub fn subscribe<T: Handler>(&self, subscription: &str, mut handler: T) {
+    pub fn subscribe<T: Handler>(&mut self, subscription: &str, mut handler: T) {
         let request = PullRequest {
             return_immediately: Some(false),
             max_messages: Some(self.max_messages),
@@ -50,12 +54,19 @@ impl PubsubSource {
                         .map(|msg| PubsubSource::decode_message(msg.message.unwrap_or_default()))
                         .collect();
 
-                    let ack_ids: Vec<String> = received_messages.clone().into_iter()
+                    let mut ack_ids: Vec<String> = received_messages.clone().into_iter()
                         .map(|msg| msg.ack_id.unwrap_or_default())
                         .collect();
 
-                    handler.handle(messages);
-                    PubsubSource::acknowledge(&self, subscription, ack_ids);
+                    self.buffered_ack_ids.append(&mut ack_ids);
+
+                    if handler.handle(messages) {
+                        let buffered_acks = self.buffered_ack_ids.to_owned();
+                        PubsubSource::acknowledge(&self, subscription, buffered_acks);
+                        self.buffered_ack_ids.clear();
+                    } else {
+                        trace!("{} messages in buffer", &self.buffered_ack_ids.len())
+                    };
                 }
             }
         }
@@ -90,24 +101,25 @@ impl PubsubSource {
     }
 
     fn acknowledge(&self, subscription: &str, ack_ids: Vec<String>) {
-        let ack_count = ack_ids.len();
+        if ack_ids.is_empty() { return; }
+        let message_count = ack_ids.len();
 
-        if ack_count > 0 {
-            let request = AcknowledgeRequest {
-                ack_ids: Some(ack_ids)
-            };
-            let result = &self.client.projects()
-                .subscriptions_acknowledge(request, subscription)
-                .doit();
+        // chunk per 400 ids due to Google API limit.
+        ack_ids.chunks(400)
+            .for_each(|chunk| {
+                let request = AcknowledgeRequest { ack_ids: Some(Vec::from(chunk)) };
 
-            match result {
-                Err(e) => {
-                    error!("Ack error: {:?}", e);
+                let result = &self.client.projects()
+                    .subscriptions_acknowledge(request, subscription)
+                    .doit();
+
+                match result {
+                    Err(e) => error!("Ack error: {:?}", e),
+                    Ok(_) => (),
                 }
-                Ok(_) => ()
-            }
-        }
-        info!("acknowledged {} messages", &ack_count);
+            });
+
+        info!("acknowledged {} messages", message_count);
     }
 
     fn decode_message(message: PubsubMessage) -> String {

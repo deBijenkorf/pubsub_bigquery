@@ -13,13 +13,12 @@ extern crate yup_oauth2 as oauth;
 
 use std::env;
 
-use log::{error, info};
-use log::Level;
+use log::{error, info, Level};
 
+use crate::auth::Authenticator;
 use crate::handler::MessageCounter;
 use crate::pubsub::PubsubSource;
 use crate::settings::Settings;
-use crate::auth::Authenticator;
 
 mod auth;
 mod settings;
@@ -30,7 +29,13 @@ mod bigquery;
 pub fn start() {
     let args: Vec<String> = env::args().skip(1).collect();
     let settings = settings::Settings::new(args[0].as_ref());
+    let secret = env::var("GOOGLE_APPLICATION_CREDENTIALS");
     simple_logger::init_with_level(Level::Info).unwrap();
+
+    let secret = match secret {
+        Ok(s) => s,
+        _ => panic!("GOOGLE_APPLICATION_CREDENTIALS must be set."),
+    };
 
     match settings {
         Err(err) => error!("{}", err.to_string()),
@@ -42,18 +47,18 @@ pub fn start() {
             match &set.mode {
                 settings::Mode::Publish => {
                     let message_count = args[1].parse::<u32>().unwrap();
-                    start_publisher(set, message_count)
+                    start_publisher(set, message_count, secret.as_ref())
                 }
-                settings::Mode::Subscribe => start_subscriber(set)
+                settings::Mode::Subscribe => start_subscriber(set, secret.as_ref())
             }
         }
     }
 }
 
-fn start_publisher(settings: Settings, message_count: u32) {
+fn start_publisher(settings: Settings, message_count: u32, secret: &str) {
     let source = PubsubSource::new(
         settings.limits.pubsub_max_messages,
-        Authenticator::authenticate(&settings.google.auth_key_file)
+        Authenticator::authenticate(secret),
     );
 
     info!("start publishing {} messages.", &message_count);
@@ -61,24 +66,20 @@ fn start_publisher(settings: Settings, message_count: u32) {
         .map(|_| "hello,there,1".to_string())
         .collect();
 
-    source.publish(messages, &settings.google.pubsub_topic);
+    source.publish(messages, &settings.pubsub.topic);
 }
 
-fn start_subscriber(settings: Settings) {
-    let google = settings.google.clone();
-    let key_file = settings.google.auth_key_file;
-
-    let source = PubsubSource::new(
+fn start_subscriber(settings: Settings, secret: &str) {
+    let mut source = PubsubSource::new(
         settings.limits.pubsub_max_messages,
-        Authenticator::authenticate(&key_file)
+        Authenticator::authenticate(secret),
     );
 
     let sink = bigquery::BigQuerySink::new(
-        google,
-        settings.delimiter,
-        MessageCounter::new(settings.limits.handler_max_messages),
-        Authenticator::authenticate(&key_file)
+        settings.bigquery,
+        MessageCounter::new(settings.limits.bigquery_max_messages),
+        Authenticator::authenticate(secret),
     );
 
-    source.subscribe(&settings.google.pubsub_subscription, sink);
+    source.subscribe(&settings.pubsub.subscription, sink);
 }
