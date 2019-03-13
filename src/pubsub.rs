@@ -15,7 +15,7 @@ type PubsubClient<'a> = google_pubsub1_beta2::Pubsub<
 pub struct PubsubSource {
     max_messages: i32,
     client: PubsubClient<'static>,
-    buffered_messages: Vec<String>,
+    buffered_ack_ids: Vec<String>,
 }
 
 impl PubsubSource {
@@ -25,7 +25,7 @@ impl PubsubSource {
         PubsubSource {
             max_messages,
             client,
-            buffered_messages: vec![],
+            buffered_ack_ids: vec![],
         }
     }
 
@@ -56,13 +56,13 @@ impl PubsubSource {
                         .map(|msg| msg.ack_id.unwrap_or_default())
                         .collect();
 
-                    self.buffered_messages.append(&mut ack_ids);
+                    self.buffered_ack_ids.append(&mut ack_ids);
 
                     if handler.handle(messages) {
-                        let buffered_messages = self.buffered_messages.to_owned();
-                        PubsubSource::acknowledge(&self, subscription, buffered_messages);
+                        let buffered_acks = self.buffered_ack_ids.to_owned();
+                        PubsubSource::acknowledge(&self, subscription, buffered_acks);
                     } else {
-                        trace!("{} messages in buffer", &self.buffered_messages.len())
+                        trace!("{} messages in buffer", &self.buffered_ack_ids.len())
                     };
                 }
             }
