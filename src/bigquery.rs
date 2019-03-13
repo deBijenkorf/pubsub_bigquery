@@ -2,21 +2,22 @@ use std::fs::{File, OpenOptions, remove_file};
 use std::io::Write;
 
 use google_bigquery2::{
+    Error,
     Job,
     JobConfiguration,
     JobConfigurationLoad,
     TableReference,
 };
+use hyper::client::Response;
 use log::{error, info};
 
 use crate::auth::Authenticator;
 use crate::handler::Handler;
 use crate::handler::MessageCounter;
-use crate::settings::GoogleSettings;
+use crate::settings::BigQuerySettings;
 
 pub struct BigQuerySink {
-    pub google: GoogleSettings,
-    pub delimiter: String,
+    bigquery: BigQuerySettings,
     counter: MessageCounter,
     client: BigQueryClient<'static>,
 }
@@ -25,45 +26,50 @@ type BigQueryClient<'a> = google_bigquery2::Bigquery<
     hyper::Client,
     oauth::ServiceAccountAccess<hyper::Client>>;
 
-impl BigQuerySink {
-    pub fn new(google: GoogleSettings, delimiter: String, counter: MessageCounter, auth: Authenticator) -> Self {
-        let client = google_bigquery2::Bigquery::new(auth.client, auth.access);
-        BigQuerySink { google, delimiter, counter, client }
-    }
+impl From<&BigQuerySettings> for JobConfigurationLoad {
+    fn from(custom: &BigQuerySettings) -> Self {
+        let table = TableReference {
+            project_id: Some(custom.project_id.to_string()),
+            table_id: Some(custom.table.to_string()),
+            dataset_id: Some(custom.dataset.to_string()),
+        };
 
-    fn table_reference(&self) -> TableReference {
-        TableReference {
-            project_id: Some(self.google.project_id.clone()),
-            table_id: Some(self.google.bigquery_table.clone()),
-            dataset_id: Some(self.google.bigquery_dataset.clone()),
-        }
+        let mut config = JobConfigurationLoad::default();
+        config.autodetect = Some(custom.auto_detect);
+        config.allow_jagged_rows = Some(custom.allow_jagged_rows);
+        config.quote = Some(custom.quote.to_string());
+        config.field_delimiter = Some(custom.delimiter.to_string());
+        config.destination_table = Some(table);
+        config
+    }
+}
+
+impl BigQuerySink {
+    pub fn new(bigquery: BigQuerySettings, counter: MessageCounter, auth: Authenticator) -> Self {
+        let client = google_bigquery2::Bigquery::new(auth.client, auth.access);
+        BigQuerySink { bigquery, counter, client }
     }
 
     fn generate_job(&self) -> Job {
-        let table = BigQuerySink::table_reference(&self);
-
-        let mut load_config = JobConfigurationLoad::default();
-
-        load_config.autodetect = Some(true);
-        load_config.quote = Some(String::from(""));
-        load_config.destination_table = Some(table);
-        load_config.field_delimiter =Some(self.delimiter.clone());
-        let mut job = Job::default();
-
         let mut job_config = JobConfiguration::default();
-        job_config.load = Some(load_config);
+        job_config.load = Some(JobConfigurationLoad::from(&self.bigquery));
 
+        let mut job = Job::default();
         job.configuration = Some(job_config);
         job
     }
 
     pub fn upload_csv(&self, path: &str) {
-        let res = &self.client.jobs().insert(BigQuerySink::generate_job(&self), &self.google.project_id)
+        let res: &Result<(Response, Job), Error> = &self.client.jobs()
+            .insert(BigQuerySink::generate_job(&self), &self.bigquery.project_id)
             .upload(File::open(path).unwrap(), "text/csv".parse().unwrap());
 
         match res {
-            Err(why) => error!("{}", why.to_string()),
-            Ok(_) => info!("upload of csv with name: {} has status: SUCCESS", path)
+            Ok((response, _job)) => {
+                info!("upload of csv with name: {} has status: {}",
+                      &self.counter.current_file, response.status);
+            }
+            Err(err) => error!("{}", err.to_string()),
         }
     }
 }
@@ -82,7 +88,7 @@ impl Handler for BigQuerySink {
             remove_file(&self.counter.current_file)
                 .expect("can't delete files in current location.");
             self.counter.reset();
-            return true
+            return true;
         }
         false
     }

@@ -1,8 +1,10 @@
-use google_pubsub1_beta2::AcknowledgeRequest;
-use google_pubsub1_beta2::PublishRequest;
-use google_pubsub1_beta2::PubsubMessage;
-use google_pubsub1_beta2::PullRequest;
-use google_pubsub1_beta2::ReceivedMessage;
+use google_pubsub1_beta2::{
+    AcknowledgeRequest,
+    PublishRequest,
+    PubsubMessage,
+    PullRequest,
+    ReceivedMessage,
+};
 use log::{error, info, trace, warn};
 
 use crate::auth::Authenticator;
@@ -61,6 +63,7 @@ impl PubsubSource {
                     if handler.handle(messages) {
                         let buffered_acks = self.buffered_ack_ids.to_owned();
                         PubsubSource::acknowledge(&self, subscription, buffered_acks);
+                        self.buffered_ack_ids.clear();
                     } else {
                         trace!("{} messages in buffer", &self.buffered_ack_ids.len())
                     };
