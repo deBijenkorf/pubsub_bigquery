@@ -30,5 +30,5 @@ impl MessageCounter {
 }
 
 pub trait Handler {
-    fn handle(&mut self, messages: Vec<String>);
+    fn handle(&mut self, messages: Vec<String>) -> bool;
 }

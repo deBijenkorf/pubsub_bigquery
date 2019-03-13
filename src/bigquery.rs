@@ -69,7 +69,7 @@ impl BigQuerySink {
 }
 
 impl Handler for BigQuerySink {
-    fn handle(&mut self, messages: Vec<String>) {
+    fn handle(&mut self, messages: Vec<String>) -> bool {
         let message_count = messages.len();
 
         if message_count > 0 {
@@ -82,7 +82,9 @@ impl Handler for BigQuerySink {
             remove_file(&self.counter.current_file)
                 .expect("can't delete files in current location.");
             self.counter.reset();
+            return true
         }
+        false
     }
 }
 

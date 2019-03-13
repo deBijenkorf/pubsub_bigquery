@@ -68,7 +68,7 @@ fn start_subscriber(settings: Settings) {
     let google = settings.google.clone();
     let key_file = settings.google.auth_key_file;
 
-    let source = PubsubSource::new(
+    let mut source = PubsubSource::new(
         settings.limits.pubsub_max_messages,
         Authenticator::authenticate(&key_file)
     );
