@@ -38,6 +38,7 @@ impl From<&BigQuerySettings> for JobConfigurationLoad {
         config.autodetect = Some(custom.auto_detect);
         config.allow_jagged_rows = Some(custom.allow_jagged_rows);
         config.quote = Some(custom.quote.to_string());
+        config.source_format = Some(custom.format.to_string());
         config.field_delimiter = Some(custom.delimiter.to_string());
         config.destination_table = Some(table);
         config

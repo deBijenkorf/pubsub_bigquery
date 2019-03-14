@@ -13,6 +13,7 @@ pub struct BigQuerySettings {
     pub project_id: String,
     pub dataset: String,
     pub table: String,
+    pub format: String,
     pub delimiter: String,
     pub quote: String,
     pub auto_detect: bool,
@@ -23,6 +24,7 @@ pub struct BigQuerySettings {
 pub struct Limits {
     pub pubsub_max_messages: i32,
     pub bigquery_max_messages: u32,
+    pub bigquery_time_limit: u64,
 }
 
 #[derive(Debug, Deserialize)]

@@ -43,6 +43,7 @@ below illustrates a simple setup:
     project_id = "PROJECT_ID"
     dataset = "DATASET_NAME"
     table = "TABLE_NAME"
+    format = "CSV"
     delimiter = "\t" // can be any ISO-8859-1 single-byte character
     quote = ""
     auto_detect = true // auto detect schema in pubsub topic

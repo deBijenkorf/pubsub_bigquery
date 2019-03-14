@@ -77,7 +77,7 @@ fn start_subscriber(settings: Settings, secret: &str) {
 
     let sink = bigquery::BigQuerySink::new(
         settings.bigquery,
-        MessageCounter::new(settings.limits.bigquery_max_messages),
+        MessageCounter::new(settings.limits),
         Authenticator::authenticate(secret),
     );
 
