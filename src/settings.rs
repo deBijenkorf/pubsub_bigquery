@@ -1,4 +1,4 @@
-use config::{Config, ConfigError, File};
+use config::{Config, ConfigError, Environment, File};
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -46,6 +46,7 @@ impl Settings {
     pub fn new(path: &str) -> Result<Settings, ConfigError> {
         let mut cfg = Config::new();
         cfg.merge(File::with_name(path))?;
+        cfg.merge(Environment::with_prefix("app"))?;
         cfg.try_into()
     }
 }
