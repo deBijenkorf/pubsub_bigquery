@@ -21,10 +21,10 @@ use crate::pubsub::PubsubSource;
 use crate::settings::Settings;
 
 mod auth;
-mod settings;
+mod bigquery;
 mod handler;
 mod pubsub;
-mod bigquery;
+mod settings;
 
 pub fn start() {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -49,7 +49,7 @@ pub fn start() {
                     let message_count = args[1].parse::<u32>().unwrap();
                     start_publisher(set, message_count, secret.as_ref())
                 }
-                settings::Mode::Subscribe => start_subscriber(set, secret.as_ref())
+                settings::Mode::Subscribe => start_subscriber(set, secret.as_ref()),
             }
         }
     }

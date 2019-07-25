@@ -1,18 +1,13 @@
 use google_pubsub1_beta2::{
-    AcknowledgeRequest,
-    PublishRequest,
-    PubsubMessage,
-    PullRequest,
-    ReceivedMessage,
+    AcknowledgeRequest, PublishRequest, PubsubMessage, PullRequest, ReceivedMessage,
 };
 use log::{error, info, trace, warn};
 
 use crate::auth::Authenticator;
 use crate::handler::Handler;
 
-type PubsubClient<'a> = google_pubsub1_beta2::Pubsub<
-    hyper::Client,
-    oauth::ServiceAccountAccess<hyper::Client>>;
+type PubsubClient<'a> =
+    google_pubsub1_beta2::Pubsub<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
 
 pub struct PubsubSource {
     max_messages: i32,
@@ -38,7 +33,9 @@ impl PubsubSource {
         };
 
         loop {
-            let result = self.client.projects()
+            let result = self
+                .client
+                .projects()
                 .subscriptions_pull(request.clone(), subscription)
                 .doit();
 
@@ -47,14 +44,18 @@ impl PubsubSource {
                     error!("Pull error: {}", e);
                 }
                 Ok((_response, response)) => {
-                    let received_messages: Vec<ReceivedMessage> = response.received_messages
-                        .unwrap_or_default();
+                    let received_messages: Vec<ReceivedMessage> =
+                        response.received_messages.unwrap_or_default();
 
-                    let messages: Vec<String> = received_messages.clone().into_iter()
+                    let messages: Vec<String> = received_messages
+                        .clone()
+                        .into_iter()
                         .map(|msg| PubsubSource::decode_message(msg.message.unwrap_or_default()))
                         .collect();
 
-                    let mut ack_ids: Vec<String> = received_messages.clone().into_iter()
+                    let mut ack_ids: Vec<String> = received_messages
+                        .clone()
+                        .into_iter()
                         .map(|msg| msg.ack_id.unwrap_or_default())
                         .collect();
 
@@ -78,15 +79,22 @@ impl PubsubSource {
             return;
         }
 
-        let pubsub_messages = messages.iter()
+        let pubsub_messages = messages
+            .iter()
             .map(|msg| PubsubMessage {
                 data: Some(base64::encode(msg.as_bytes())),
                 ..Default::default()
             })
             .collect();
 
-        let request = PublishRequest { messages: Some(pubsub_messages) };
-        let result = self.client.projects().topics_publish(request.clone(), topic).doit();
+        let request = PublishRequest {
+            messages: Some(pubsub_messages),
+        };
+        let result = self
+            .client
+            .projects()
+            .topics_publish(request.clone(), topic)
+            .doit();
 
         match result {
             Err(e) => {
@@ -101,23 +109,28 @@ impl PubsubSource {
     }
 
     fn acknowledge(&self, subscription: &str, ack_ids: Vec<String>) {
-        if ack_ids.is_empty() { return; }
+        if ack_ids.is_empty() {
+            return;
+        }
         let message_count = ack_ids.len();
 
         // chunk per 400 ids due to Google API limit.
-        ack_ids.chunks(400)
-            .for_each(|chunk| {
-                let request = AcknowledgeRequest { ack_ids: Some(Vec::from(chunk)) };
+        ack_ids.chunks(400).for_each(|chunk| {
+            let request = AcknowledgeRequest {
+                ack_ids: Some(Vec::from(chunk)),
+            };
 
-                let result = &self.client.projects()
-                    .subscriptions_acknowledge(request, subscription)
-                    .doit();
+            let result = &self
+                .client
+                .projects()
+                .subscriptions_acknowledge(request, subscription)
+                .doit();
 
-                match result {
-                    Err(e) => error!("Ack error: {:?}", e),
-                    Ok(_) => (),
-                }
-            });
+            match result {
+                Err(e) => error!("Ack error: {:?}", e),
+                Ok(_) => (),
+            }
+        });
 
         info!("acknowledged {} messages", message_count);
     }

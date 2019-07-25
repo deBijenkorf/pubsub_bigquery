@@ -1,5 +1,5 @@
-use hyper::Client;
 use hyper::net::{HttpConnector, HttpsConnector};
+use hyper::Client;
 use hyper_rustls::TlsClient;
 use log::info;
 use oauth;
@@ -22,9 +22,6 @@ impl Authenticator {
         let access = oauth::ServiceAccountAccess::new(client_secret, client);
         let client = hyper::Client::with_connector(Authenticator::get_https_client());
 
-        Authenticator {
-            client,
-            access,
-        }
+        Authenticator { client, access }
     }
 }

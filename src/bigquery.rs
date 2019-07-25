@@ -1,13 +1,7 @@
-use std::fs::{File, OpenOptions, remove_file};
+use std::fs::{remove_file, File, OpenOptions};
 use std::io::Write;
 
-use google_bigquery2::{
-    Error,
-    Job,
-    JobConfiguration,
-    JobConfigurationLoad,
-    TableReference,
-};
+use google_bigquery2::{Error, Job, JobConfiguration, JobConfigurationLoad, TableReference};
 use hyper::client::Response;
 use log::{error, info};
 
@@ -22,9 +16,8 @@ pub struct BigQuerySink {
     client: BigQueryClient<'static>,
 }
 
-type BigQueryClient<'a> = google_bigquery2::Bigquery<
-    hyper::Client,
-    oauth::ServiceAccountAccess<hyper::Client>>;
+type BigQueryClient<'a> =
+    google_bigquery2::Bigquery<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
 
 impl From<&BigQuerySettings> for JobConfigurationLoad {
     fn from(custom: &BigQuerySettings) -> Self {
@@ -48,7 +41,11 @@ impl From<&BigQuerySettings> for JobConfigurationLoad {
 impl BigQuerySink {
     pub fn new(bigquery: BigQuerySettings, counter: MessageCounter, auth: Authenticator) -> Self {
         let client = google_bigquery2::Bigquery::new(auth.client, auth.access);
-        BigQuerySink { bigquery, counter, client }
+        BigQuerySink {
+            bigquery,
+            counter,
+            client,
+        }
     }
 
     fn generate_job(&self) -> Job {
@@ -61,14 +58,18 @@ impl BigQuerySink {
     }
 
     pub fn upload_csv(&self, path: &str) {
-        let res: &Result<(Response, Job), Error> = &self.client.jobs()
+        let res: &Result<(Response, Job), Error> = &self
+            .client
+            .jobs()
             .insert(BigQuerySink::generate_job(&self), &self.bigquery.project_id)
             .upload(File::open(path).unwrap(), "text/csv".parse().unwrap());
 
         match res {
             Ok((response, _job)) => {
-                info!("upload of csv with name: {} has status: {}",
-                      &self.counter.current_file, response.status);
+                info!(
+                    "upload of csv with name: {} has status: {}",
+                    &self.counter.current_file, response.status
+                );
             }
             Err(err) => error!("{}", err.to_string()),
         }

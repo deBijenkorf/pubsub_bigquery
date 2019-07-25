@@ -1,5 +1,5 @@
-use uuid::Uuid;
 use std::time::{Duration, SystemTime};
+use uuid::Uuid;
 
 use crate::settings::Limits;
 
@@ -27,8 +27,8 @@ impl MessageCounter {
     }
 
     pub fn reached_threshold(&self) -> bool {
-        self.current_messages >= self.max_messages ||
-            self.current_checkpoint.elapsed().unwrap() >= Duration::from_secs(self.max_duration)
+        self.current_messages >= self.max_messages
+            || self.current_checkpoint.elapsed().unwrap() >= Duration::from_secs(self.max_duration)
     }
 
     pub fn reset(&mut self) {
