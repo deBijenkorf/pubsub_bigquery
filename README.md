@@ -51,6 +51,7 @@ below illustrates a simple setup:
     
     [limits]
     pubsub_max_messages = 500
+    bigquery_time_limit = 90
     bigquery_max_messages = 1000
     ```
     

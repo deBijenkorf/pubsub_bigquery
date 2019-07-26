@@ -1,13 +1,17 @@
-use std::fs::{remove_file, File, OpenOptions};
-use std::io::Write;
+use std::fs::{File, OpenOptions, remove_file};
+use std::io::{self, Write};
 
-use google_bigquery2::{Error, Job, JobConfiguration, JobConfigurationLoad, TableReference};
-use hyper::client::Response;
-use log::{error, info};
+use google_bigquery2::{
+    Error,
+    Job,
+    JobConfiguration,
+    JobConfigurationLoad,
+    TableReference,
+};
+use log::info;
 
 use crate::auth::Authenticator;
-use crate::handler::Handler;
-use crate::handler::MessageCounter;
+use crate::handler::{Handler, HandlingError, MessageCounter, HandlingResult};
 use crate::settings::BigQuerySettings;
 
 pub struct BigQuerySink {
@@ -17,7 +21,7 @@ pub struct BigQuerySink {
 }
 
 type BigQueryClient<'a> =
-    google_bigquery2::Bigquery<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
+google_bigquery2::Bigquery<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
 
 impl From<&BigQuerySettings> for JobConfigurationLoad {
     fn from(custom: &BigQuerySettings) -> Self {
@@ -57,54 +61,54 @@ impl BigQuerySink {
         job
     }
 
-    pub fn upload_csv(&self, path: &str) {
-        let res: &Result<(Response, Job), Error> = &self
-            .client
+    pub fn upload_csv(&self, path: &str) -> Result<(), Error> {
+        let file = File::open(path).unwrap();
+        self.client
             .jobs()
             .insert(BigQuerySink::generate_job(&self), &self.bigquery.project_id)
-            .upload(File::open(path).unwrap(), "text/csv".parse().unwrap());
-
-        match res {
-            Ok((response, _job)) => {
-                info!(
-                    "upload of csv with name: {} has status: {}",
-                    &self.counter.current_file, response.status
-                );
-            }
-            Err(err) => error!("{}", err.to_string()),
-        }
+            .upload(file, "text/csv".parse().unwrap())
+            .and_then(move |(response, job)| {
+                if response.status.is_success() && job.status.unwrap().error_result.is_none() {
+                    info!(
+                        "upload of csv with name: {} has status: {}",
+                        &self.counter.current_file, response.status
+                    );
+                    Ok(())
+                } else {
+                    Err(Error::Failure(response))
+                }
+            })
     }
 }
 
 impl Handler for BigQuerySink {
-    fn handle(&mut self, messages: Vec<String>) -> bool {
+    fn handle(&mut self, messages: Vec<String>) -> Result<HandlingResult, HandlingError> {
         let message_count = messages.len();
 
         if message_count > 0 {
             self.counter.increase(messages.len() as u32);
-            write_to_file(&self.counter.current_file.as_ref(), messages);
+            write_to_file(&self.counter.current_file.as_ref(), messages)?;
         }
 
         if self.counter.reached_threshold() {
-            self.upload_csv(&self.counter.current_file);
-            remove_file(&self.counter.current_file)
-                .expect("can't delete files in current location.");
+            self.upload_csv(&self.counter.current_file)?;
+            remove_file(&self.counter.current_file)?;
             self.counter.reset();
-            return true;
+            return Ok(true);
         }
-        false
+        Ok(false)
     }
 }
 
 //todo: move this elsewhere
-fn write_to_file(file_name: &str, messages: Vec<String>) {
+fn write_to_file(file_name: &str, messages: Vec<String>) -> io::Result<File> {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(file_name)
-        .unwrap();
+        .open(file_name)?;
 
     for msg in messages {
-        writeln!(file, "{}", msg).expect("can't write to file.");
+        writeln!(file, "{}", msg)?;
     }
+    Ok(file)
 }

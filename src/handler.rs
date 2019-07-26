@@ -1,7 +1,48 @@
+use std::error;
+use std::fmt;
+use std::io;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use crate::settings::Limits;
+
+#[derive(Debug, Clone)]
+pub struct HandlingError {
+    kind: String,
+    message: String,
+}
+
+pub type HandlingResult = bool;
+
+impl error::Error for HandlingError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
+impl fmt::Display for HandlingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unhandled exception during message parsing.")
+    }
+}
+
+impl From<io::Error> for HandlingError {
+    fn from(error: io::Error) -> Self {
+        HandlingError {
+            kind: String::from("io"),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<google_bigquery2::Error> for HandlingError {
+    fn from(error: google_bigquery2::Error) -> Self {
+        HandlingError {
+            kind: String::from("google_bigquery"),
+            message: error.to_string(),
+        }
+    }
+}
 
 pub struct MessageCounter {
     pub max_messages: u32,
@@ -39,5 +80,5 @@ impl MessageCounter {
 }
 
 pub trait Handler {
-    fn handle(&mut self, messages: Vec<String>) -> bool;
+    fn handle(&mut self, messages: Vec<String>) -> Result<HandlingResult, HandlingError>;
 }

@@ -7,7 +7,7 @@ use crate::auth::Authenticator;
 use crate::handler::Handler;
 
 type PubsubClient<'a> =
-    google_pubsub1_beta2::Pubsub<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
+google_pubsub1_beta2::Pubsub<hyper::Client, oauth::ServiceAccountAccess<hyper::Client>>;
 
 pub struct PubsubSource {
     max_messages: i32,
@@ -61,13 +61,17 @@ impl PubsubSource {
 
                     self.buffered_ack_ids.append(&mut ack_ids);
 
-                    if handler.handle(messages) {
-                        let buffered_acks = self.buffered_ack_ids.to_owned();
-                        PubsubSource::acknowledge(&self, subscription, buffered_acks);
-                        self.buffered_ack_ids.clear();
-                    } else {
-                        trace!("{} messages in buffer", &self.buffered_ack_ids.len())
-                    };
+                    match handler.handle(messages) {
+                        Ok(true) => {
+                            let buffered_acks = self.buffered_ack_ids.to_owned();
+                            PubsubSource::acknowledge(&self, subscription, buffered_acks);
+                            self.buffered_ack_ids.clear();
+                        }
+                        Ok(false) => {
+                            trace!("{} messages in buffer", &self.buffered_ack_ids.len())
+                        }
+                        Err(err) => error!("encountered error during message handling: {}", err),
+                    }
                 }
             }
         }
