@@ -8,8 +8,8 @@ use crate::settings::Limits;
 
 #[derive(Debug, Clone)]
 pub struct HandlingError {
-    kind: String,
-    message: String,
+    pub kind: String,
+    pub message: String,
 }
 
 pub type HandlingResult = bool;
@@ -22,7 +22,7 @@ impl error::Error for HandlingError {
 
 impl fmt::Display for HandlingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unhandled exception during message parsing.")
+        write!(f, "error: {}, kind: {}", &self.message, &self.kind)
     }
 }
 
@@ -37,9 +37,11 @@ impl From<io::Error> for HandlingError {
 
 impl From<google_bigquery2::Error> for HandlingError {
     fn from(error: google_bigquery2::Error) -> Self {
+        let mut message = String::from("custom: ");
+        message.push_str(&error.to_string());
         HandlingError {
             kind: String::from("google_bigquery"),
-            message: error.to_string(),
+            message,
         }
     }
 }

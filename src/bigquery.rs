@@ -8,11 +8,12 @@ use google_bigquery2::{
     JobConfigurationLoad,
     TableReference,
 };
-use log::info;
+use log::{info, trace, error};
 
 use crate::auth::Authenticator;
 use crate::handler::{Handler, HandlingError, MessageCounter, HandlingResult};
 use crate::settings::BigQuerySettings;
+use std::path::Path;
 
 pub struct BigQuerySink {
     bigquery: BigQuerySettings,
@@ -61,8 +62,9 @@ impl BigQuerySink {
         job
     }
 
-    pub fn upload_csv(&self, path: &str) -> Result<(), Error> {
-        let file = File::open(path).unwrap();
+    pub fn upload_csv(&self, path: &str) -> Result<(), HandlingError> {
+        let file = File::open(path)?;
+
         self.client
             .jobs()
             .insert(BigQuerySink::generate_job(&self), &self.bigquery.project_id)
@@ -73,10 +75,18 @@ impl BigQuerySink {
                         "upload of csv with name: {} has status: {}",
                         &self.counter.current_file, response.status
                     );
+                    match remove_file(&self.counter.current_file) {
+                        Ok(_) => trace!("deleted uploaded file: {}", &self.counter.current_file),
+                        _ => error!("error deleting file: {}", &self.counter.current_file)
+                    };
                     Ok(())
                 } else {
                     Err(Error::Failure(response))
                 }
+            })
+            .map_err(|err| HandlingError {
+                kind: String::from("bigquery"),
+                message: err.to_string(),
             })
     }
 }
@@ -91,9 +101,10 @@ impl Handler for BigQuerySink {
         }
 
         if self.counter.reached_threshold() {
-            self.upload_csv(&self.counter.current_file)?;
-            remove_file(&self.counter.current_file)?;
-            self.counter.reset();
+            if Path::new(&self.counter.current_file).exists() {
+                self.upload_csv(&self.counter.current_file)?;
+                self.counter.reset();
+            }
             return Ok(true);
         }
         Ok(false)
