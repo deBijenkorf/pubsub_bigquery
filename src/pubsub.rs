@@ -17,7 +17,8 @@ pub struct PubsubSource {
 
 impl PubsubSource {
     pub fn new(max_messages: i32, auth: Authenticator) -> Self {
-        let client = google_pubsub1_beta2::Pubsub::new(auth.client, auth.access);
+        let client =
+            google_pubsub1_beta2::Pubsub::new(auth.client, auth.access);
 
         PubsubSource {
             max_messages,
