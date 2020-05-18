@@ -98,7 +98,7 @@ impl PubsubSource {
         let result = self
             .client
             .projects()
-            .topics_publish(request.clone(), topic)
+            .topics_publish(request, topic)
             .doit();
 
         match result {
