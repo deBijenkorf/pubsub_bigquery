@@ -4,7 +4,6 @@ use hyper::Client;
 use hyper::net::{HttpConnector, HttpsConnector};
 use hyper_rustls::TlsClient;
 use log::info;
-use oauth;
 use oauth::ServiceAccountAccess;
 
 pub struct Authenticator {
