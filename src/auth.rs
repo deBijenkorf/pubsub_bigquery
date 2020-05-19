@@ -23,8 +23,8 @@ impl Authenticator {
         let access = oauth::ServiceAccountAccess::new(client_secret, client);
         let mut client = hyper::Client::with_connector(Authenticator::get_https_client());
         {
-            client.set_read_timeout(Some(Duration::from_secs(15)));
-            client.set_write_timeout(Some(Duration::from_secs(15)));
+            client.set_read_timeout(Some(Duration::from_secs(60)));
+            client.set_write_timeout(Some(Duration::from_secs(60)));
         }
 
         Authenticator { client, access }

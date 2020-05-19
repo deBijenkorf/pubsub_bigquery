@@ -43,6 +43,9 @@ pub fn start() {
             info!("debug mode: {}", &set.debug);
             info!("application mode: {:?}", &set.mode);
             info!("starting application.");
+            info!("pubsub topic: {}", &set.pubsub.topic);
+            info!("pubsub subscription: {}", &set.pubsub.subscription);
+            info!("bigquery table sink: {}:{}", &set.bigquery.dataset, &set.bigquery.table);
 
             match &set.mode {
                 settings::Mode::Publish => {
